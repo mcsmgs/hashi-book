@@ -1,12 +1,25 @@
-variable "server_port" {
-  description = "The port the server will use for http requests"
-  default     = 8080
-}
-
-data "aws_availability_zones" "all" {}
-
 provider "aws" {
   region = "eu-west-2"
+}
+
+data "terraform_remote_state" "db" {
+  backend = "s3"
+
+  config {
+    bucket = "(terraform-s3-bucket-tfstate)"
+    key    = "state/services/data-stores/mysql/terraform.tfstate"
+    region = "eu-west-2"
+  }
+}
+
+data "template_file " "user_data" {
+  template = "${file("user_data.sh")}"
+
+  vars {
+    server_port = "${var.server_port}"
+    db_address  = "${data.terraform_remote_state.db.address}"
+    db_port     = "${data.terraform_remote_state.db.port}"
+  }
 }
 
 /*
@@ -30,12 +43,7 @@ resource "aws_launch_configuration" "example-lc" {
   image_id        = "ami-e6768381"
   instance_type   = "t2.micro"
   security_groups = ["${aws_security_group.instance.id}"]
-
-  user_data = <<-EOF
-							#!/bin/bash
-							echo "Hello, World" > index.html
-							nohup busybox httpd -f -p "${var.server_port}" &
-							EOF
+  user_data       = "${data.template_file.user_data.rendered}"
 
   lifecycle {
     create_before_destroy = true
@@ -113,6 +121,10 @@ resource "aws_security_group" "elb" {
   }
 }
 
-output "public_ip" {
-  value = "${aws_elb.example-elb.dns_name}"
+terraform {
+  backend "s3" {
+    bucket = "terraform-s3-bucket-tfstate"
+    key    = "state/services/webserver-cluster/terraform.tfstate"
+    region = "eu-west-2"
+  }
 }
