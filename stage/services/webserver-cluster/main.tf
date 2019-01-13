@@ -2,6 +2,13 @@ provider "aws" {
   region = "eu-west-2"
 }
 
+module "webserver_cluster" {
+  source = "/Users/mdasilva/gitrepo/terraform-book/modules/services/webserver-cluster"
+
+  cluster_name           = "webservers-stage"
+  db_remote_state_bucket = "Lesson stopped here"
+}
+
 data "terraform_remote_state" "db" {
   backend = "s3"
 
