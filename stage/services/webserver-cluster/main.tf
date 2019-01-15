@@ -6,15 +6,16 @@ module "webserver_cluster" {
   source = "/Users/mdasilva/gitrepo/terraform-book/modules/services/webserver-cluster"
 
   cluster_name           = "webservers-stage"
-  db_remote_state_bucket = "Lesson stopped here"
+  db_remote_state_bucket = "terraform-s3-bucket-tfstate"
+  db_remote_state_key    = "prod/services/data-stores/mysql/terraform.tfstate"
 }
 
 data "terraform_remote_state" "db" {
   backend = "s3"
 
   config {
-    bucket = "terraform-s3-bucket-tfstate"
-    key    = "state/services/data-stores/mysql/terraform.tfstate"
+    bucket = "${var.db_remote_state_bucket}"
+    key    = "${var.db_remote_state_key}"
     region = "eu-west-2"
   }
 }
@@ -29,23 +30,6 @@ data "template_file" "user_data" {
   }
 }
 
-/*
-resource "aws_instance" "example-ec2" {
-  ami                    = "ami-e6768381"
-  instance_type          = "t2.micro"
-  vpc_security_group_ids = ["${aws_security_group.instance.id}"]
-
-  user_data = <<-EOF
-							#!/bin/bash
-							echo "Hello, World" > index.html
-							nohup busybox httpd -f -p 8080 &
-							EOF
-
-  tags {
-    Name = "terraform-example-ec2"
-  }
-}
-*/
 resource "aws_launch_configuration" "example-lc" {
   image_id        = "ami-e6768381"
   instance_type   = "t2.micro"
